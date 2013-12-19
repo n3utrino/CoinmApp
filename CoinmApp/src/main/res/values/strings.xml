@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">CoinmApp</string>
+    <string name="title_section1">Map</string>
+    <string name="title_section2">Search</string>
+    <string name="title_section3">Statistics</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="action_search">Search</string>
+    <string name="action_settings">About</string>
+    <string name="title_about">About</string>
+
+</resources>
