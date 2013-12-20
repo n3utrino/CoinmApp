@@ -13,18 +13,13 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import ch.wootbarrel.coinmapp.db.CoinmapDataSource;
 
 /**
  * Created by n3utrino on 19.12.13.
@@ -37,45 +32,29 @@ public class MapEntryManager implements GoogleMap.OnCameraChangeListener, Google
     private List<MapEntry> entries;
     private List<Marker> markers = new ArrayList<Marker>();
     private List<Circle> circles = new ArrayList<Circle>();
-    private Gson gson = new Gson();
-    private Context context;
     private GoogleMap map;
-    private Map<LatLngBounds, List<MapEntry>> buckets;
     private float currentZoom;
+
+    private CoinmapDataSource dataSource;
 
 
     public MapEntryManager(Context ctx, GoogleMap map) {
 
-
-        this.context = ctx;
         this.map = map;
+        this.dataSource = new CoinmapDataSource(ctx);
+
+        dataSource.open();
+        entries = dataSource.getAllEntries();
 
         map.setOnCameraChangeListener(this);
         map.setOnMapLoadedCallback(this);
 
-        StringBuilder builder = new StringBuilder();
-
-        BufferedReader is = null;
-        try {
-            is = new BufferedReader(new InputStreamReader(ctx.getResources().openRawResource(R.raw.data), "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        String line;
-        try {
-            while (null != (line = is.readLine())) {
-                builder.append(line);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        Type collectionType = new TypeToken<List<MapEntry>>() {
-        }.getType();
-        entries = gson.fromJson(builder.toString(), collectionType);
-
-
     }
+
+    public void dispose() {
+        dataSource.close();
+    }
+
 
     private LatLng latLngFromDistanceAndBearing(LatLng start, double distance, double bearing) {
         double R = 6371;
@@ -112,13 +91,14 @@ public class MapEntryManager implements GoogleMap.OnCameraChangeListener, Google
         }
 
 
+        //todo do in async task
         currentZoom = cameraPosition.zoom;
 
         double bucketSizePixel = 40;
         double worldPixels = 265 * Math.pow(2, cameraPosition.zoom);
         double bucketSizeDistance = bucketSizePixel * 40000 / worldPixels;
 
-        buckets = new HashMap<LatLngBounds, List<MapEntry>>();
+        Map<LatLngBounds, List<MapEntry>> buckets = new HashMap<LatLngBounds, List<MapEntry>>();
 
         for (Marker marker : markers) {
             marker.remove();

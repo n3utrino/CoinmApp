@@ -51,7 +51,7 @@ public class MapActivity extends Activity
     public void onNavigationDrawerItemSelected(int position) {
         // update the main content by replacing fragments
 
-        Fragment newFragment = null;
+        Fragment newFragment;
 
         switch (position) {
             case 0: {
@@ -76,7 +76,11 @@ public class MapActivity extends Activity
                 newFragment = mapFragment;
                 break;
             }
-            case 3: {
+            case 2: {
+                newFragment = new StatisticsFragment();
+                break;
+            }
+            default: {
                 newFragment = new AboutFragment();
                 break;
             }
@@ -110,6 +114,7 @@ public class MapActivity extends Activity
 
     public void restoreActionBar() {
         ActionBar actionBar = getActionBar();
+        assert actionBar != null;
         actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_STANDARD);
         actionBar.setDisplayShowTitleEnabled(true);
         actionBar.setTitle(mTitle);
@@ -169,6 +174,7 @@ public class MapActivity extends Activity
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+            assert rootView != null;
             TextView textView = (TextView) rootView.findViewById(R.id.section_label);
             textView.setText(Integer.toString(getArguments().getInt(ARG_SECTION_NUMBER)));
             return rootView;
