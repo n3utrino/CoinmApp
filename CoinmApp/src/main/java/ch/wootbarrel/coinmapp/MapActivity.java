@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v4.widget.DrawerLayout;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -13,10 +12,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.GoogleMapOptions;
-import com.google.android.gms.maps.MapFragment;
 
 
 public class MapActivity extends Activity
@@ -30,7 +25,9 @@ public class MapActivity extends Activity
      * Used to store the last screen title. For use in {@link #restoreActionBar()}.
      */
     private CharSequence mTitle;
-    private MapFragment mapFragment;
+    private CoinmapFragment mapFragment = new CoinmapFragment();
+    private StatisticsFragment statisticsFragment = new StatisticsFragment();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +37,7 @@ public class MapActivity extends Activity
         mNavigationDrawerFragment = (NavigationDrawerFragment)
                 getFragmentManager().findFragmentById(R.id.navigation_drawer);
         mTitle = getTitle();
+
 
         // Set up the drawer.
         mNavigationDrawerFragment.setUp(
@@ -55,29 +53,11 @@ public class MapActivity extends Activity
 
         switch (position) {
             case 0: {
-                GoogleMapOptions options = new GoogleMapOptions();
-                options.compassEnabled(true)
-                        .mapType(GoogleMap.MAP_TYPE_NORMAL)
-                        .scrollGesturesEnabled(true)
-                        .zoomControlsEnabled(false);
-                if (mapFragment == null) {
-                    mapFragment = MapFragment.newInstance(options);
-                    mapFragment.setRetainInstance(true);
-                    Handler handler = new Handler();
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            new MapEntryManager(MapActivity.this, mapFragment.getMap());
-                            mapFragment.getMap().setMyLocationEnabled(true);
-                        }
-                    });
-                }
-
                 newFragment = mapFragment;
                 break;
             }
             case 2: {
-                newFragment = new StatisticsFragment();
+                newFragment = statisticsFragment;
                 break;
             }
             default: {

@@ -106,6 +106,19 @@ public class CoinmapDataSource {
 
     }
 
+
+    public String topCategory() {
+        Cursor cursor = database.rawQuery("select icon, count(*) as cnt from " + CoinmapDbHelper.TABLE_MAP_ENTRIES + " where icon <> 'bitcoin' group by icon order by cnt desc", null);
+        cursor.moveToFirst();
+
+        String icon = cursor.getString(0);
+        int count = cursor.getInt(1);
+
+        return count + " " + icon;
+
+    }
+
+
     public List<MapEntry> getAllEntries() {
         List<MapEntry> entries = new ArrayList<MapEntry>();
 

@@ -1,7 +1,6 @@
 package ch.wootbarrel.coinmapp;
 
 import android.app.Fragment;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,6 +9,8 @@ import android.webkit.WebView;
 
 /**
  * Created by n3utrino on 19.12.13.
+ *
+ * displays the about screen in a webview
  */
 public class AboutFragment extends Fragment {
     @Override
