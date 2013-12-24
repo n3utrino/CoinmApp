@@ -38,6 +38,13 @@ public class StatisticsFragment extends Fragment {
 
             @Override
             protected Void doInBackground(Void... voids) {
+
+                if (StatisticsFragment.this.getActivity() == null) {
+                    //Is not attached to activity so stop
+                    this.cancel(true);
+                    return null;
+                }
+
                 dataSource = new CoinmapDataSource(StatisticsFragment.this.getActivity());
 
                 dataSource.open();
@@ -77,6 +84,7 @@ public class StatisticsFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        dataSource.close();
+        if (dataSource != null)
+            dataSource.close();
     }
 }

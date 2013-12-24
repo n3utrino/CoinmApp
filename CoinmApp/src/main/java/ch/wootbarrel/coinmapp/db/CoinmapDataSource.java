@@ -2,9 +2,13 @@ package ch.wootbarrel.coinmapp.db;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -14,11 +18,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 
 import ch.wootbarrel.coinmapp.MapEntry;
-import ch.wootbarrel.coinmapp.R;
 
 /**
  * Created by n3utrino on 20.12.13.
@@ -28,53 +34,110 @@ import ch.wootbarrel.coinmapp.R;
 public class CoinmapDataSource {
 
 
+    public static final String LAST_UPDATE = "last_update";
+    public static final String DB_PREFS = "dbPrefs";
     private static String[] allColumns = {CoinmapDbHelper.COLUMN_ID, CoinmapDbHelper.COLUMN_CITY, CoinmapDbHelper.COLUMN_ADDR, CoinmapDbHelper.COLUMN_PHONE,
             CoinmapDbHelper.COLUMN_TITLE, CoinmapDbHelper.COLUMN_LON, CoinmapDbHelper.COLUMN_LAT,
             CoinmapDbHelper.COLUMN_WEB, CoinmapDbHelper.COLUMN_ICON, CoinmapDbHelper.COLUMN_OSM_ID};
+    private final SharedPreferences prefs;
     private SQLiteDatabase database;
     private CoinmapDbHelper helper;
-
     private Gson gson = new Gson();
 
 
     public CoinmapDataSource(Context ctx) {
         helper = new CoinmapDbHelper(ctx);
 
+        prefs = ctx.getSharedPreferences(DB_PREFS, Context.MODE_PRIVATE);
+
         open();
-        if (getAllEntries().isEmpty()) {
+        if (isUpdateDue()) {
             initializeDb(ctx);
         }
         close();
     }
 
-    private void initializeDb(Context ctx) {
-        //TODO: notify user
+    private boolean isUpdateDue() {
+
+        long last = prefs.getLong(LAST_UPDATE, 0);
+        return System.currentTimeMillis() - last > 1000 * 60 * 60 * 24; // Update every 24H
+    }
+
+    private void initializeDb(final Context ctx) {
+        //TODO: do notification with progress bar
+
+        Handler toastHandler = new Handler(Looper.getMainLooper());
+
+        toastHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(ctx, "Updating Data. Takes about 30s", Toast.LENGTH_LONG).show();
+
+            }
+        });
+
         StringBuilder builder = new StringBuilder();
 
-        BufferedReader is = null;
+        BufferedReader is;
         try {
-            is = new BufferedReader(new InputStreamReader(ctx.getResources().openRawResource(R.raw.data), "UTF-8"));
+
+            URL dataUrl = new URL("http://coinmap.org/data/data-overpass-bitcoin.json");
+            URLConnection connection = dataUrl.openConnection();
+            is = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
+
+            final int lastSize = getAllEntries().size();
+
+            String line;
+            try {
+                while (null != (line = is.readLine())) {
+                    builder.append(line);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            Type collectionType = new TypeToken<List<MapEntry>>() {
+            }.getType();
+            List<MapEntry> mapEntries = gson.fromJson(builder.toString(), collectionType);
+
+            this.clearData();
+
+            for (MapEntry entry : mapEntries) {
+                this.insertMapEntry(entry);
+            }
+
+            final int newSize = (getAllEntries().size() - lastSize);
+
+            prefs.edit().putLong(LAST_UPDATE, System.currentTimeMillis()).commit();
+
+            toastHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(ctx, "Updating Data. Success - " + newSize + " new shops", Toast.LENGTH_LONG).show();
+
+                }
+            });
+
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-        }
-        String line;
-        try {
-            assert is != null;
-            while (null != (line = is.readLine())) {
-                builder.append(line);
-            }
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
         } catch (IOException e) {
+            toastHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(ctx, "Updating Data. Failed - maybe no connection", Toast.LENGTH_LONG).show();
+
+                }
+            });
+
             e.printStackTrace();
         }
 
-        Type collectionType = new TypeToken<List<MapEntry>>() {
-        }.getType();
-        List<MapEntry> mapEntries = gson.fromJson(builder.toString(), collectionType);
-        for (MapEntry entry : mapEntries) {
-            this.insertMapEntry(entry);
-        }
+    }
 
-
+    private void clearData() {
+        database.delete(CoinmapDbHelper.TABLE_MAP_ENTRIES, null, null);
     }
 
     public void open() throws SQLException {
@@ -106,18 +169,19 @@ public class CoinmapDataSource {
 
     }
 
-
     public String topCategory() {
         Cursor cursor = database.rawQuery("select icon, count(*) as cnt from " + CoinmapDbHelper.TABLE_MAP_ENTRIES + " where icon <> 'bitcoin' group by icon order by cnt desc", null);
-        cursor.moveToFirst();
+        if (cursor.moveToFirst()) {
 
-        String icon = cursor.getString(0);
-        int count = cursor.getInt(1);
+            String icon = cursor.getString(0);
+            int count = cursor.getInt(1);
 
-        return count + " " + icon;
+            return count + " " + icon;
+        }
+
+        return "";
 
     }
-
 
     public List<MapEntry> getAllEntries() {
         List<MapEntry> entries = new ArrayList<MapEntry>();

@@ -41,16 +41,16 @@ public class CoinmapFragment extends MapFragment {
         return view;
     }
 
-
     private void setUpMap() {
 
-        UiSettings settings = getMap().getUiSettings();
-        settings.setMyLocationButtonEnabled(true);
-        getMap().setMyLocationEnabled(true);
-        mapEntryManager.updateMap(getMap());
+        if (getMap() != null) {
+            UiSettings settings = getMap().getUiSettings();
+            settings.setMyLocationButtonEnabled(true);
+            getMap().setMyLocationEnabled(true);
+            mapEntryManager.updateMap(getMap());
+        }
 
     }
-
 
     @Override
     public void onDestroy() {
