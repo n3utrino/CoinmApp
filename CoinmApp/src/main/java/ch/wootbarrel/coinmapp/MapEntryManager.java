@@ -1,5 +1,6 @@
 package ch.wootbarrel.coinmapp;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.AsyncTask;
@@ -42,9 +43,9 @@ public class MapEntryManager implements GoogleMap.OnCameraChangeListener, Google
     private VisibleRegion lastVisibleRegion;
 
 
-    public MapEntryManager(Context ctx) {
+    public MapEntryManager(Context ctx, ProgressDialog progressDialog) {
 
-        this.dataSource = new CoinmapDataSource(ctx);
+        this.dataSource = new CoinmapDataSource(ctx, progressDialog);
         dataSource.open();
         entries = dataSource.getAllEntries();
 

@@ -1,6 +1,7 @@
 package ch.wootbarrel.coinmapp;
 
 import android.app.Fragment;
+import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -30,6 +31,7 @@ public class StatisticsFragment extends Fragment {
 
 
         final View view = inflater.inflate(R.layout.statistics, container, false);
+        final ProgressDialog progressDialog = new ProgressDialog(inflater.getContext());
 
         new AsyncTask<Void, Void, Void>() {
 
@@ -45,7 +47,7 @@ public class StatisticsFragment extends Fragment {
                     return null;
                 }
 
-                dataSource = new CoinmapDataSource(StatisticsFragment.this.getActivity());
+                dataSource = new CoinmapDataSource(StatisticsFragment.this.getActivity(), progressDialog);
 
                 dataSource.open();
                 venues = dataSource.getAllEntries().size();

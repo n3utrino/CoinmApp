@@ -1,5 +1,6 @@
 package ch.wootbarrel.coinmapp.db;
 
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -40,12 +41,15 @@ public class CoinmapDataSource {
             CoinmapDbHelper.COLUMN_TITLE, CoinmapDbHelper.COLUMN_LON, CoinmapDbHelper.COLUMN_LAT,
             CoinmapDbHelper.COLUMN_WEB, CoinmapDbHelper.COLUMN_ICON, CoinmapDbHelper.COLUMN_OSM_ID};
     private final SharedPreferences prefs;
+    private final ProgressDialog progressDialog;
     private SQLiteDatabase database;
     private CoinmapDbHelper helper;
     private Gson gson = new Gson();
 
 
-    public CoinmapDataSource(Context ctx) {
+    public CoinmapDataSource(Context ctx, ProgressDialog progressDialog) {
+
+        this.progressDialog = progressDialog;
         helper = new CoinmapDbHelper(ctx);
 
         prefs = ctx.getSharedPreferences(DB_PREFS, Context.MODE_PRIVATE);
@@ -60,29 +64,84 @@ public class CoinmapDataSource {
     private boolean isUpdateDue() {
 
         long last = prefs.getLong(LAST_UPDATE, 0);
-        return System.currentTimeMillis() - last > 1000 * 60 * 60 * 24; // Update every 24H
+        return System.currentTimeMillis() - last > 1000;// * 60 * 60 * 24; // Update every 24H
     }
 
     private void initializeDb(final Context ctx) {
-        //TODO: do notification with progress bar
+        final Handler toastHandler = new Handler(Looper.getMainLooper());
 
-        Handler toastHandler = new Handler(Looper.getMainLooper());
+        //Initial Import Show Progress bar
+        if (getAllEntries().size() == 0) {
+            toastHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                    progressDialog.setIndeterminate(true);
+                    progressDialog.setCancelable(false);
+                    progressDialog.show();
+                }
+            });
+
+            fetchAndParseData(ctx, toastHandler);
+
+        } else {
+
+            new Thread() {
+                @Override
+                public void run() {
+                    fetchAndParseData(ctx, toastHandler);
+                }
+            }.start();
+        }
+
+
+    }
+
+    private void updateProgressDialog(final String message) {
+        final Handler toastHandler = new Handler(Looper.getMainLooper());
 
         toastHandler.post(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(ctx, "Updating Data. Takes about 30s", Toast.LENGTH_LONG).show();
-
+                progressDialog.setMessage(message);
             }
         });
+    }
 
+    private void setProgressMax(final int progressMax) {
+        final Handler toastHandler = new Handler(Looper.getMainLooper());
+
+        toastHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                progressDialog.setIndeterminate(false);
+                progressDialog.setMax(progressMax);
+            }
+        });
+    }
+
+
+    private void setProgress(final int progress) {
+        final Handler toastHandler = new Handler(Looper.getMainLooper());
+
+        toastHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                progressDialog.setProgress(progress);
+            }
+        });
+    }
+
+    private void fetchAndParseData(final Context ctx, Handler toastHandler) {
         StringBuilder builder = new StringBuilder();
 
         BufferedReader is;
         try {
 
+            updateProgressDialog("Fetching Data");
             URL dataUrl = new URL("http://coinmap.org/data/data-overpass-bitcoin.json");
             URLConnection connection = dataUrl.openConnection();
+            connection.addRequestProperty("User-Agent", "CoinmApp;1.0;Android");
             is = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
 
             final int lastSize = getAllEntries().size();
@@ -98,14 +157,20 @@ public class CoinmapDataSource {
 
             Type collectionType = new TypeToken<List<MapEntry>>() {
             }.getType();
+            updateProgressDialog("Parsing JSON");
             List<MapEntry> mapEntries = gson.fromJson(builder.toString(), collectionType);
 
             this.clearData();
-
+            updateProgressDialog("Inserting Entries");
+            setProgressMax(mapEntries.size());
+            int i = 1;
+            this.database.beginTransaction();
             for (MapEntry entry : mapEntries) {
                 this.insertMapEntry(entry);
+                setProgress(i);
+                i++;
             }
-
+            this.database.setTransactionSuccessful();
             final int newSize = (getAllEntries().size() - lastSize);
 
             prefs.edit().putLong(LAST_UPDATE, System.currentTimeMillis()).commit();
@@ -132,8 +197,9 @@ public class CoinmapDataSource {
             });
 
             e.printStackTrace();
+        } finally {
+            database.endTransaction();
         }
-
     }
 
     private void clearData() {

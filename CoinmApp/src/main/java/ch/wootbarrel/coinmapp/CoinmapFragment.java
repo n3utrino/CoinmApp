@@ -1,5 +1,6 @@
 package ch.wootbarrel.coinmapp;
 
+import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -17,23 +18,32 @@ import com.google.android.gms.maps.UiSettings;
 public class CoinmapFragment extends MapFragment {
 
     private MapEntryManager mapEntryManager;
+    private ProgressDialog progressDialog;
 
     @Override
     public View onCreateView(final LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
-        View view = super.onCreateView(inflater, container, savedInstanceState);
+        ViewGroup view = (ViewGroup) super.onCreateView(inflater, container, savedInstanceState);
 
 
-        new AsyncTask<Void, Void, Void>() {
+        progressDialog = new ProgressDialog(inflater.getContext());
+        progressDialog.setMessage("Initializing");
+
+
+        new AsyncTask<Void, String, Void>() {
+
             @Override
             protected Void doInBackground(Void... voids) {
-                mapEntryManager = new MapEntryManager(inflater.getContext());
+
+                mapEntryManager = new MapEntryManager(inflater.getContext(), progressDialog);
                 return null;
             }
 
             @Override
             protected void onPostExecute(Void aVoid) {
                 setUpMap();
+                progressDialog.hide();
+
             }
         }.execute();
 
