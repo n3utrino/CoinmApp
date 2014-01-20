@@ -64,7 +64,7 @@ public class CoinmapDataSource {
     private boolean isUpdateDue() {
 
         long last = prefs.getLong(LAST_UPDATE, 0);
-        return System.currentTimeMillis() - last > 1000;// * 60 * 60 * 24; // Update every 24H
+        return System.currentTimeMillis() - last > 1000 * 60 * 60 * 24; // Update every 24H
     }
 
     private void initializeDb(final Context ctx) {
